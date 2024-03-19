@@ -1,0 +1,86 @@
+﻿Program.Sub.Preflight.Start
+V.Global.sError.Declare(String)
+
+Program.External.Include.Library("1510.lib")
+Program.External.Include.Library("1010.lib")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Arturo Almaguer
+'Date: 21 March 2022
+'Customer: Woodpeckers, quote number 13266
+'This project runs both 'Reprice Router Estimates' and 'Update Inventory Description to BOM' menu items as an automated task to run nightly on the task scheduler.
+'This script is launched off the task scheduler every night as an automated task.
+
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+F.Intrinsic.Control.Try
+	
+	'Using callwrapper 1510's library to reprice routers
+	F.Data.DataTable.AddRow("1510","Mode", "NS", "AllRouter", "Y", "SetupFromWC", "N", "RuntimeFromWC", "N", "DescFromWC", "N", "DescFromInvMatl", "N", "DescFromInvRouter", "N", "PLFromInvRouter", "N", "RepriceLaborOnly", "N", "RepriceMatlOnly", "Y", "UpdateAltCostRouter", "N", "ZeroUCForMfgParts", "N", "RefreshLeadTimeMatl", "N", "RefreshLeadTimeOutside", "N", "UpdateRateWithInvCostIfZero", "N", "UpdateRateWithWCRateIfZero", "N")
+			
+	'Calling callwrapper 1510
+	F.Intrinsic.Control.CallSub("1510Sync")
+	
+	'Using callwrapper 1010's library to update inventory description to BOM
+	F.Data.DataTable.AddRow("1010","Process", "01", "AllBOMs", "Y","UpdateCost", "01","RefreshDescForRawMatl", "Y","RefreshDescForParentParts", "Y","RefreshUM", "Y","RefreshSource", "Y")
+			
+	'Calling callwrapper 1010
+	F.Intrinsic.Control.CallSub("1010Sync")
+	
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+Program.Sub.CatchError.Start
+'To display the error
+F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.SubroutineCalledFrom, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Global.sError)
+F.Intrinsic.Control.CallSub("Logging")
+F.Intrinsic.Control.End
+Program.Sub.CatchError.End
+Program.Sub.Logging.Start
+F.Intrinsic.Control.Try
+
+	V.Local.sPath.Declare(String)
+	V.Local.sFile.Declare(String)
+	V.Local.bExists.Declare(Boolean)
+	V.Local.bExists2.Declare(Boolean)
+	V.Local.sMessage.Declare(String)
+	V.Local.sContents.Declare(String)
+	
+	'Checking if log folder exists
+	F.Intrinsic.String.Build("{0}\CUSTOM\6674\LOG", V.Caller.GlobalDir, V.Local.sPath)
+	F.Intrinsic.File.DirExists(V.Local.sPath, V.Local.bExists)
+	F.Intrinsic.Control.If(V.Local.bExists.Not)
+		
+		F.Intrinsic.File.CreateDir(V.Local.sPath)
+	
+	F.Intrinsic.Control.EndIf
+	
+	'Checking if log file exists
+	F.Intrinsic.String.Build("{0}\6674 Log.txt", V.Local.sPath, V.Local.sFile)
+	
+	F.Intrinsic.File.Exists(V.Local.sFile, V.Local.bExists2)
+	F.Intrinsic.Control.If(V.Local.bExists2.Not)
+		
+		F.Intrinsic.String.Build("{0} {1}: Log Start", V.Ambient.Date.FormatYYYY-MM-DD, V.Ambient.Time.Format!HH:NN:SS, V.Local.sContents)
+		F.Intrinsic.File.String2File(V.Local.sFile, V.Local.sContents)
+		
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.String.Build("{0} {1}: {2}", V.Ambient.Date.FormatYYYY-MM-DD, V.Ambient.Time.Format!HH:NN:SS, V.Global.sError, V.Local.sContents)
+	F.Intrinsic.File.Append2FileNewLine(V.Local.sFile, V.Local.sContents)
+	
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.Logging.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$apadilla$}$20220411131141359$}$Lag9STqBJOmNXSbd5+msRcBWPGz0aFqSzPePUG9qWbxgDmYzwVybaUpFc8fxgvAdt48bYZu3aw5AVRrEURL6VQ==
+Program.Sub.Comments.End
